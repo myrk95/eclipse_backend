@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-vl)zr6-(^dw^=1hr$f#u2m6f3lnz-an)xh(zn=)p*3b(96r620
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'eclipse-backend-97o3.onrender.com']
 
 
 # Application definition
