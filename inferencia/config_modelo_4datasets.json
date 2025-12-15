@@ -1,0 +1,41 @@
+{
+  "nombre_modelo": "melanoma_4datasets_20251206_141431",
+  "umbral_optimo": 0.22314798831939697,
+  "mejores_metricas": {
+    "threshold": 0.22314798831939697,
+    "f1": 0.7490247074122237,
+    "accuracy": 0.8224471021159153,
+    "precision": 0.7076167076167076,
+    "recall": 0.7955801104972375,
+    "specificity": 0.8358620689655173,
+    "balanced_accuracy": 0.8157210897313774,
+    "tp": 288,
+    "fp": 119,
+    "tn": 606,
+    "fn": 74
+  },
+  "class_weights": {
+    "0": 0.75,
+    "1": 1.7999999999999998
+  },
+  "config_entrenamiento": {
+    "target_size": 224,
+    "batch_size": 32,
+    "epochs": 80,
+    "learning_rate": 0.0001,
+    "best_val_auc": 0.8411906957626343,
+    "best_val_accuracy": 0.7221711277961731
+  },
+  "datasets_usados": [
+    "isic2016",
+    "isic2018",
+    "isic2020",
+    "isic2024"
+  ],
+  "balance_ratio": 2,
+  "muestras_totales": 5436,
+  "muestras_malignas": 1812,
+  "muestras_benignas": 3624,
+  "imagenes_encontradas": 5436,
+  "imagenes_no_encontradas": 0
+}
