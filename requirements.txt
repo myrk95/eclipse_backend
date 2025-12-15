@@ -6,4 +6,4 @@ numpy
 Pillow
 python-dotenv
 psycopg2-binary
-tensorflow-cpu==2.26.0
+tensorflow-cpu==2.16.2
