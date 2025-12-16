@@ -2,8 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Health check
-    path('health/', views.dashboard_view, name='health'),  # puedes usar dashboard_view o crear un health específico
+    # Health check / Dashboard
+    path('health/', views.dashboard_view, name='health'),
 
     # Autenticación
     path('login/', views.login_view, name='login'),
@@ -15,10 +15,10 @@ urlpatterns = [
     # Subir imagen
     path('upload_image/', views.upload_image, name='upload_image'),
 
-    # Resultado de análisis
-    path('analysis_result/', views.analysis_result, name='analysis_result'),  # ← tu modelo
+    # Resultado de análisis con IA
+    path('analysis_result/', views.analysis_result, name='analysis_result'),
 
-    # Historial
+    # Historial del usuario
     path('history/', views.history_view, name='history'),
 
     # Perfil
