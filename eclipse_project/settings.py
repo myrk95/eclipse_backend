@@ -19,14 +19,18 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'eclipse',  
+    'eclipse',  # tu app principal
 ]
 
+# -----------------------------
+# Middleware
+# -----------------------------
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'eclipse_project.middleware.DisableCSRFOnAPI',  # <- Middleware para desactivar CSRF en /api/
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -94,16 +98,19 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # -----------------------------
 # Usuario personalizado
 # -----------------------------
-AUTH_USER_MODEL = 'eclipse.Usuari' 
+AUTH_USER_MODEL = 'eclipse.Usuari'
 
 # -----------------------------
 # Default auto field
 # -----------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# -----------------------------
+# REST Framework
+# -----------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.BasicAuthentication",  # simple para desarrollo
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
@@ -114,7 +121,33 @@ REST_FRAMEWORK = {
 # CORS
 # -----------------------------
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+    "http://localhost:3000",  # tu frontend React Native
 ]
 CORS_ALLOW_HEADERS = ["*"]
 CORS_ALLOW_METHODS = ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
+
+# -----------------------------
+# CSRF desactivado para API
+# -----------------------------
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:8000",
+]
+
+# -----------------------------
+# Middleware personalizado para desactivar CSRF en /api/
+# -----------------------------
+# Crea el archivo eclipse_project/middleware.py con esto:
+
+# middleware.py
+"""
+class DisableCSRFOnAPI:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.path.startswith("/api/"):
+            setattr(request, "_dont_enforce_csrf_checks", True)
+        response = self.get_response(request)
+        return response
+"""
