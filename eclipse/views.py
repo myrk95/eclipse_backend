@@ -131,14 +131,16 @@ def upload_image(request):
     })
 
 # --------------------------------------------------
-# ANALYSIS RESULT (mejorada)
+# ANALYSIS RESULT SEGURO
 # --------------------------------------------------
 @api_view(['POST'])
 def analysis_result(request):
     user_id = request.data.get("user_id")
     image_file = request.FILES.get("image")
+
     if not user_id or not image_file:
         return Response({"error": "Datos incompletos"}, status=400)
+
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
@@ -147,26 +149,29 @@ def analysis_result(request):
     # Crear objeto Lunar
     lunar = Lunar.objects.create(usuari=user, imatge=image_file)
 
-    # Guardar imagen temporalmente con nombre único
+    # Crear ruta temporal con nombre único
     temp_dir = os.path.join(settings.MEDIA_ROOT, "temp")
     os.makedirs(temp_dir, exist_ok=True)
     temp_filename = f"{uuid.uuid4()}.jpg"
     temp_path = os.path.join(temp_dir, temp_filename)
 
     try:
+        # Guardar imagen temporalmente
         with open(temp_path, "wb+") as f:
             for chunk in image_file.chunks():
                 f.write(chunk)
 
         predictor = get_predictor()
         resultado = predictor.predict(temp_path)
-        print("DEBUG - Resultado del predictor:", resultado)
 
+        # Captura de errores de predictor
         if "error" in resultado:
             return Response({"error": resultado["error"]}, status=400)
 
         probabilidad = resultado.get("probabilidad")
         prediccion = resultado.get("prediccion")
+        warnings = resultado.get("warnings", [])  # opcional, si tu predictor devuelve warnings
+
         if probabilidad is None or prediccion is None:
             return Response({"error": "Resultado inválido del predictor"}, status=500)
 
@@ -176,6 +181,7 @@ def analysis_result(request):
         return Response({"error": f"Error durante el análisis: {str(e)}"}, status=500)
 
     finally:
+        # Limpiar archivo temporal
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
@@ -188,19 +194,20 @@ def analysis_result(request):
     )
     Historial.objects.create(usuari=user, lunar=lunar)
 
-    # Construir URL seguro
+    # Construir URL de la imagen de manera segura
     imagen_url = None
     try:
         imagen_url = request.build_absolute_uri(lunar.imatge.url)
-    except Exception as e:
-        print("DEBUG - No se pudo construir la URL de la imagen:", str(e))
+    except Exception:
+        imagen_url = None
 
     return Response({
         "status": "ok",
         "lunar_id": lunar.id,
         "resultado": prediccion,
         "probabilidad": f"{probabilidad:.2%}",
-        "imagen_url": imagen_url
+        "imagen_url": imagen_url,
+        "warnings": warnings  # lista de warnings de calidad y gates, si existen
     })
 
 # --------------------------------------------------
