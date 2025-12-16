@@ -30,9 +30,6 @@ def login_view(request):
     if user is None:
         return Response({"error": "Credenciales inválidas"}, status=400)
 
-    login(request, user)
-    return Response({"status": "ok", "user_id": user.id, "email": user.email})
-
 
 # -----------------------------
 # REGISTRO

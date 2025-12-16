@@ -94,12 +94,21 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # -----------------------------
 # Usuario personalizado
 # -----------------------------
-AUTH_USER_MODEL = 'eclipse.Usuari' # <-- reemplaza 'tu_app' por el nombre de tu app
+AUTH_USER_MODEL = 'eclipse.Usuari' 
 
 # -----------------------------
 # Default auto field
 # -----------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",
+    ],
+}
 
 # -----------------------------
 # CORS
