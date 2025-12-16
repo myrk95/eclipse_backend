@@ -1,21 +1,22 @@
-import random
 import os
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model, authenticate, login
 from django.contrib.auth.hashers import make_password
-from inferencia.inferencia import MelanomaPredictor  # <-- el teu model IA
+
+from inferencia.inferencia import MelanomaPredictor
+from .models import Usuari, Lunar, ResultatAnalisi, Historial
 
 User = get_user_model()
-predictor = MelanomaPredictor()  # Instància global per a crides ràpides
+predictor = MelanomaPredictor()
 
 # -----------------------------
 # Login
 # -----------------------------
 @api_view(['POST'])
 def login_view(request):
-    email = request.data.get('email')
-    password = request.data.get('password')
+    email = request.data.get("email")
+    password = request.data.get("password")
 
     if not email or not password:
         return Response({"error": "Email y contraseña requeridos"}, status=400)
@@ -26,11 +27,15 @@ def login_view(request):
         return Response({"error": "Credenciales inválidas"}, status=400)
 
     user = authenticate(username=user_obj.username, password=password)
-    if user is None:
+    if not user:
         return Response({"error": "Credenciales inválidas"}, status=400)
 
     login(request, user)
-    return Response({"status": "ok", "user_id": user.id, "email": user.email})
+    return Response({
+        "status": "ok",
+        "user_id": user.id,
+        "email": user.email
+    })
 
 
 # -----------------------------
@@ -38,9 +43,9 @@ def login_view(request):
 # -----------------------------
 @api_view(['POST'])
 def register_view(request):
-    email = request.data.get('email')
-    password = request.data.get('password')
-    username = request.data.get('username', email.split("@")[0])
+    email = request.data.get("email")
+    password = request.data.get("password")
+    username = request.data.get("username", email.split("@")[0])
 
     if not email or not password:
         return Response({"error": "Email y contraseña requeridos"}, status=400)
@@ -53,147 +58,100 @@ def register_view(request):
         email=email,
         password=make_password(password)
     )
-    return Response({"status": "ok", "user_id": user.id, "email": user.email})
 
-
-# -----------------------------
-# Dashboard
-# -----------------------------
-@api_view(['GET'])
-def dashboard_view(request):
     return Response({
         "status": "ok",
-        "mensaje": "Bienvenido al dashboard",
-        "ultimos_resultados": [
-            {"id": 1, "resultado": "negativo"},
-            {"id": 2, "resultado": "positivo"},
-        ]
+        "user_id": user.id,
+        "email": user.email
     })
 
 
 # -----------------------------
-# Upload image (simulado)
-# -----------------------------
-@api_view(['POST'])
-def upload_image(request):
-    image_path = request.data.get("image_path")
-    if not image_path or not os.path.exists(image_path):
-        return Response({"error": f"No se encontró la imagen: {image_path}"}, status=400)
-    
-    image_id = random.randint(1000, 9999)
-    return Response({
-        "status": "ok",
-        "image_id": image_id,
-        "image_path": image_path
-    })
-
-
-# -----------------------------
-# Analysis result
-# -----------------------------
-# -----------------------------
-# Analysis result (form-data)
+# Analysis result (FORM-DATA)
 # -----------------------------
 @api_view(['POST'])
 def analysis_result(request):
-    # Obtiene la imagen desde form-data
+    user_id = request.data.get("user_id")
     image_file = request.FILES.get("image")
+
+    if not user_id:
+        return Response({"error": "user_id requerido"}, status=400)
+
     if not image_file:
         return Response({"error": "No se subió imagen"}, status=400)
 
-    # Guardar temporalmente la imagen
+    try:
+        usuari = Usuari.objects.get(id=user_id)
+    except Usuari.DoesNotExist:
+        return Response({"error": "Usuario no existe"}, status=404)
+
+    # Guardar imagen real
+    lunar = Lunar.objects.create(
+        usuari=usuari,
+        imatge=image_file
+    )
+
+    # Archivo temporal para IA
     temp_path = f"/tmp/{image_file.name}"
     with open(temp_path, "wb+") as f:
         for chunk in image_file.chunks():
             f.write(chunk)
 
-    # Hacer predicción
     try:
-        probabilidad, prediccion = predictor.predict(temp_path)
+        probabilitat, prediccio = predictor.predict(temp_path)
     except Exception as e:
         os.remove(temp_path)
+        lunar.delete()
         return Response({"error": str(e)}, status=500)
 
-    # Eliminar archivo temporal
     os.remove(temp_path)
 
-    # Devolver resultado
+    resultat = ResultatAnalisi.objects.create(
+        lunar=lunar,
+        tipus=prediccio,
+        probabilitat=probabilitat,
+        descripcio="Análisis automático IA"
+    )
+
+    Historial.objects.create(
+        usuari=usuari,
+        lunar=lunar
+    )
+
     return Response({
         "status": "ok",
-        "resultado": prediccion,
-        "probabilidad": f"{probabilidad:.2%}" if probabilidad is not None else None
+        "user_id": usuari.id,
+        "lunar_id": lunar.id,
+        "resultado_id": resultat.id,
+        "tipo": prediccio,
+        "probabilidad": f"{probabilitat:.2%}"
     })
 
 
 # -----------------------------
-# Historial
+# Historial por USER_ID
 # -----------------------------
 @api_view(['GET'])
 def history_view(request):
-    historial = [
-        {"id": 1, "resultado": "negativo"},
-        {"id": 2, "resultado": "positivo"},
-        {"id": 3, "resultado": "negativo"},
-    ]
-    return Response({"status": "ok", "historial": historial})
+    user_id = request.GET.get("user_id")
 
+    if not user_id:
+        return Response({"error": "user_id requerido"}, status=400)
 
-# -----------------------------
-# Perfil
-# -----------------------------
-@api_view(['GET', 'PUT'])
-def profile_view(request):
-    if request.method == 'GET':
-        return Response({
-            "status": "ok",
-            "usuario": {
-                "username": "usuario_demo",
-                "email": "demo@test.com"
-            }
-        })
-    elif request.method == 'PUT':
-        username = request.data.get("username", "usuario_demo")
-        return Response({
-            "status": "ok",
-            "usuario_actualizado": {
-                "username": username,
-                "email": "demo@test.com"
-            }
+    historials = Historial.objects.filter(
+        usuari_id=user_id
+    ).select_related("lunar")
+
+    data = []
+    for h in historials:
+        data.append({
+            "lunar_id": h.lunar.id,
+            "imagen": h.lunar.imatge.url,
+            "fecha": h.data
         })
 
-
-# -----------------------------
-# Configuración
-# -----------------------------
-@api_view(['GET', 'PUT'])
-def settings_view(request):
-    if request.method == 'GET':
-        return Response({
-            "status": "ok",
-            "settings": {
-                "notificaciones": True,
-                "tema": "claro"
-            }
-        })
-    elif request.method == 'PUT':
-        notificaciones = request.data.get("notificaciones", True)
-        tema = request.data.get("tema", "claro")
-        return Response({
-            "status": "ok",
-            "settings_actualizados": {
-                "notificaciones": notificaciones,
-                "tema": tema
-            }
-        })
-
-
-# -----------------------------
-# Soporte
-# -----------------------------
-@api_view(['POST'])
-def support_view(request):
-    mensaje = request.data.get("mensaje", "")
     return Response({
         "status": "ok",
-        "mensaje_recibido": mensaje
+        "user_id": user_id,
+        "historial": data
     })
