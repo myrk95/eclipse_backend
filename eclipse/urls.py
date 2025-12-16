@@ -1,7 +1,10 @@
+from django.contrib import admin
 from django.urls import path
 from . import views
 
 urlpatterns = [
+
+    path('admin/', admin.site.urls),  
     # Health check / Dashboard
     path('health/', views.dashboard_view, name='health'),
 
