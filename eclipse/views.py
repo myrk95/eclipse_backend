@@ -102,10 +102,14 @@ def dashboard_view(request):
 
     for lunar in lunars:
         result = lunar.resultats.last()
+        if result:
+            prob_str = f"{result.probabilitat:.2%}" if hasattr(result, 'probabilitat') else None
+        else:
+            prob_str = None
         ultimos_resultados.append({
             "lunar_id": lunar.id,
             "resultado": result.tipus if result else None,
-            "probabilidad": f"{result.probabilitat:.2%}" if result else None,
+            "probabilidad": prob_str,
             "imagen_url": request.build_absolute_uri(lunar.imatge.url)
         })
 
@@ -168,12 +172,18 @@ def analysis_result(request):
     temp_path = os.path.join(temp_dir, image_file.name)
 
     try:
+        # Guardar imagen temporalmente
         with open(temp_path, "wb+") as f:
             for chunk in image_file.chunks():
                 f.write(chunk)
 
         predictor = get_predictor()
         resultado = predictor.predict(temp_path)
+        print("DEBUG - Resultado del predictor:", resultado)
+
+        if "error" in resultado:
+            return Response({"error": resultado["error"]}, status=400)
+
         probabilidad = resultado["probabilidad"]
         prediccion = resultado["prediccion"]
 
@@ -184,6 +194,7 @@ def analysis_result(request):
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
+    # Guardar resultado en la base de datos
     ResultatAnalisi.objects.create(
         lunar=lunar,
         tipus=prediccion,
@@ -225,10 +236,11 @@ def history_view(request):
 
     for h in registros:
         result = h.lunar.resultats.last()
+        prob_str = f"{result.probabilitat:.2%}" if result and hasattr(result, 'probabilitat') else None
         historial.append({
             "lunar_id": h.lunar.id,
             "resultado": result.tipus if result else None,
-            "probabilidad": f"{result.probabilitat:.2%}" if result else None,
+            "probabilidad": prob_str,
             "fecha": h.data
         })
 
