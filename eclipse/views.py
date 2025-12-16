@@ -164,3 +164,22 @@ def analysis_result(request):
         "probabilidad": f"{probabilidad:.2%}" if probabilidad is not None else None,
         "imagen_url": request.build_absolute_uri(lunar.imatge.url)
     })
+@csrf_exempt
+@api_view(['GET'])
+def history_view(request):
+    return Response({"status": "ok", "historial": []})
+
+@csrf_exempt
+@api_view(['GET'])
+def profile_view(request):
+    return Response({"status": "ok", "profile": {}})
+
+@csrf_exempt
+@api_view(['GET', 'POST'])
+def settings_view(request):
+    return Response({"status": "ok", "settings": {}})
+
+@csrf_exempt
+@api_view(['GET', 'POST'])
+def support_view(request):
+    return Response({"status": "ok", "support": {}})
