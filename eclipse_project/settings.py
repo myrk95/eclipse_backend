@@ -30,7 +30,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'eclipse_project.middleware.DisableCSRFOnAPI',  # <- Middleware para desactivar CSRF en /api/
+    'eclipse.middleware.DisableCSRFOnAPI',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
