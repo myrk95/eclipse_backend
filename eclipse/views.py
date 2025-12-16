@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model, authenticate, login
 from django.contrib.auth.hashers import make_password
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from inferencia.inferencia import MelanomaPredictor
 from .models import Lunar, ResultatAnalisi, Historial, Configuracio, Suport
 
@@ -13,6 +15,7 @@ predictor = MelanomaPredictor()  # Instancia global del modelo IA
 # -----------------------------
 # LOGIN
 # -----------------------------
+@csrf_exempt
 @api_view(['POST'])
 def login_view(request):
     email = request.data.get('email')
@@ -34,6 +37,7 @@ def login_view(request):
 # -----------------------------
 # REGISTRO
 # -----------------------------
+@csrf_exempt
 @api_view(['POST'])
 def register_view(request):
     email = request.data.get('email')
@@ -82,6 +86,7 @@ def dashboard_view(request):
 # -----------------------------
 # SUBIR IMAGEN
 # -----------------------------
+@csrf_exempt
 @api_view(['POST'])
 def upload_image(request):
     image_file = request.FILES.get("image")
@@ -103,6 +108,7 @@ def upload_image(request):
 # -----------------------------
 # ANALYSIS RESULT
 # -----------------------------
+@csrf_exempt
 @api_view(['POST'])
 def analysis_result(request):
     image_file = request.FILES.get("image")
@@ -155,6 +161,7 @@ def analysis_result(request):
 # -----------------------------
 # HISTORIAL
 # -----------------------------
+@csrf_exempt
 @api_view(['GET'])
 def history_view(request):
     historial_list = []
@@ -179,6 +186,7 @@ def history_view(request):
 # -----------------------------
 # PERFIL
 # -----------------------------
+@csrf_exempt
 @api_view(['GET', 'PUT'])
 def profile_view(request):
     if request.method == 'GET':
@@ -205,6 +213,7 @@ def profile_view(request):
 # -----------------------------
 # CONFIGURACION
 # -----------------------------
+@csrf_exempt
 @api_view(['GET', 'PUT'])
 def settings_view(request):
     try:
@@ -239,6 +248,7 @@ def settings_view(request):
 # -----------------------------
 # SOPORTE
 # -----------------------------
+@csrf_exempt
 @api_view(['POST'])
 def support_view(request):
     mensaje = request.data.get("mensaje", "")
