@@ -1,5 +1,3 @@
-# eclipse_project/middleware.py
-
 class DisableCSRFOnAPI:
     def __init__(self, get_response):
         self.get_response = get_response
