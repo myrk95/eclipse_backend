@@ -94,7 +94,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # -----------------------------
 # Usuario personalizado
 # -----------------------------
-AUTH_USER_MODEL = 'tu_app.Usuari'  # <-- reemplaza 'tu_app' por el nombre de tu app
+AUTH_USER_MODEL = 'eclipse.Usuari' # <-- reemplaza 'tu_app' por el nombre de tu app
 
 # -----------------------------
 # Default auto field
