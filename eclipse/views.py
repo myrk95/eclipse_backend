@@ -162,13 +162,17 @@ def analysis_result(request):
 def history_view(request):
     historial_list = []
     historial = Historial.objects.filter(usuari=request.user).order_by('-data')
+    
     for h in historial:
         result = h.lunar.resultats.last()
         historial_list.append({
             "lunar_id": h.lunar.id,
-            "resultado": result.tipus if result else None,
-            "probabilidad": f"{result.probabilitat:.2%}" if result else None,
+            "name": h.lunar.name,
+            "descripcion": h.lunar.descripcio,
             "imagen_url": request.build_absolute_uri(h.lunar.imatge.url),
+            "porcentaje": f"{h.lunar.porcentaje:.2%}" if h.lunar.porcentaje is not None else None,
+            "resultado": result.tipus if result else None,  # maligno o benigno
+            "probabilidad": f"{result.probabilitat:.2%}" if result else None,
             "fecha": h.data
         })
 

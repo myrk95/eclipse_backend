@@ -11,6 +11,9 @@ class Usuari(AbstractUser):
 class Lunar(models.Model):
     usuari = models.ForeignKey(Usuari, on_delete=models.CASCADE, related_name="lunars")
     imatge = models.ImageField(upload_to="lunars/")
+    name = models.CharField(max_length=100)
+    descripcio = models.TextField(blank=True)
+    porcentaje = models.FloatField(null=True, blank=True)
     data_pujada = models.DateTimeField(auto_now_add=True)
 
 # Clase ResultatAnalisi
