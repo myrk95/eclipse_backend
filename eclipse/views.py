@@ -5,12 +5,16 @@ from django.contrib.auth import get_user_model, authenticate, login
 from django.contrib.auth.hashers import make_password
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 from inferencia.inferencia import MelanomaPredictor
 from .models import Lunar, ResultatAnalisi, Historial, Configuracio, Suport
 
 User = get_user_model()
-predictor = MelanomaPredictor()  # Instancia global del modelo IA
+
+# -----------------------------
+# Inicializar predictor IA con ruta absoluta
+# -----------------------------
+MODEL_PATH = os.path.join(settings.BASE_DIR, "eclipse", "models", "isic2019_mobilenetv2_best.keras")
+predictor = MelanomaPredictor(model_path=MODEL_PATH)
 
 # -----------------------------
 # LOGIN
@@ -33,15 +37,8 @@ def login_view(request):
     if user is None:
         return Response({"error": "Credenciales inválidas"}, status=400)
 
-    # Opcional: crear sesión si quieres usar SessionAuthentication
     login(request, user)
-
-    return Response({
-        "status": "ok",
-        "user_id": user.id,
-        "username": user.username,
-        "email": user.email
-    })
+    return Response({"status": "ok", "user_id": user.id, "username": user.username, "email": user.email})
 
 
 # -----------------------------
@@ -78,7 +75,6 @@ def dashboard_view(request):
         return Response({"error": "Usuario no autenticado"}, status=401)
 
     ultimos_resultados = []
-
     lunars = Lunar.objects.filter(usuari=request.user).order_by('-data_pujada')[:5]
     for lunar in lunars:
         result = lunar.resultats.last()
@@ -89,11 +85,7 @@ def dashboard_view(request):
             "imagen_url": request.build_absolute_uri(lunar.imatge.url)
         })
 
-    return Response({
-        "status": "ok",
-        "mensaje": f"Bienvenido {request.user.username}",
-        "ultimos_resultados": ultimos_resultados
-    })
+    return Response({"status": "ok", "mensaje": f"Bienvenido {request.user.username}", "ultimos_resultados": ultimos_resultados})
 
 
 # -----------------------------
@@ -109,10 +101,7 @@ def upload_image(request):
     if not image_file:
         return Response({"error": "No se subió imagen"}, status=400)
 
-    lunar = Lunar.objects.create(
-        usuari=request.user,
-        imatge=image_file
-    )
+    lunar = Lunar.objects.create(usuari=request.user, imatge=image_file)
 
     return Response({
         "status": "ok",
@@ -137,15 +126,20 @@ def analysis_result(request):
     lunar = Lunar.objects.create(usuari=request.user, imatge=image_file)
 
     # Guardar temporal para IA
-    temp_path = os.path.join(settings.MEDIA_ROOT, 'temp', image_file.name)
-    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+    temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, image_file.name)
     with open(temp_path, "wb+") as f:
         for chunk in image_file.chunks():
             f.write(chunk)
 
     # Predicción IA
     try:
-        probabilidad, prediccion = predictor.predict(temp_path)
+        resultado = predictor.predict(temp_path)
+        if "error" in resultado:
+            raise Exception(resultado["error"])
+        probabilidad = resultado["probabilidad"]
+        prediccion = resultado["prediccion"]
     except Exception as e:
         os.remove(temp_path)
         return Response({"error": str(e)}, status=500)
@@ -159,10 +153,7 @@ def analysis_result(request):
     )
 
     # Historial
-    Historial.objects.create(
-        usuari=request.user,
-        lunar=lunar
-    )
+    Historial.objects.create(usuari=request.user, lunar=lunar)
 
     os.remove(temp_path)
 
@@ -172,121 +163,4 @@ def analysis_result(request):
         "resultado": prediccion,
         "probabilidad": f"{probabilidad:.2%}" if probabilidad is not None else None,
         "imagen_url": request.build_absolute_uri(lunar.imatge.url)
-    })
-
-
-# -----------------------------
-# HISTORIAL
-# -----------------------------
-@csrf_exempt
-@api_view(['GET'])
-def history_view(request):
-    if request.user.is_anonymous:
-        return Response({"error": "Usuario no autenticado"}, status=401)
-
-    historial_list = []
-    historial = Historial.objects.filter(usuari=request.user).order_by('-data')
-    for h in historial:
-        result = h.lunar.resultats.last()
-        historial_list.append({
-            "lunar_id": h.lunar.id,
-            "name": getattr(h.lunar, "name", ""),
-            "descripcion": getattr(h.lunar, "descripcio", ""),
-            "imagen_url": request.build_absolute_uri(h.lunar.imatge.url),
-            "porcentaje": f"{getattr(h.lunar, 'porcentaje', 0):.2%}" if getattr(h.lunar, 'porcentaje', None) is not None else None,
-            "resultado": result.tipus if result else None,
-            "probabilidad": f"{result.probabilitat:.2%}" if result else None,
-            "fecha": h.data
-        })
-
-    return Response({"status": "ok", "historial": historial_list})
-
-
-# -----------------------------
-# PERFIL
-# -----------------------------
-@csrf_exempt
-@api_view(['GET', 'PUT'])
-def profile_view(request):
-    if request.user.is_anonymous:
-        return Response({"error": "Usuario no autenticado"}, status=401)
-
-    if request.method == 'GET':
-        return Response({
-            "status": "ok",
-            "usuario": {
-                "username": request.user.username,
-                "email": request.user.email
-            }
-        })
-    elif request.method == 'PUT':
-        username = request.data.get("username", request.user.username)
-        request.user.username = username
-        request.user.save()
-        return Response({
-            "status": "ok",
-            "usuario_actualizado": {
-                "username": request.user.username,
-                "email": request.user.email
-            }
-        })
-
-
-# -----------------------------
-# CONFIGURACION
-# -----------------------------
-@csrf_exempt
-@api_view(['GET', 'PUT'])
-def settings_view(request):
-    if request.user.is_anonymous:
-        return Response({"error": "Usuario no autenticado"}, status=401)
-
-    try:
-        config = request.user.configuracio
-    except Configuracio.DoesNotExist:
-        config = Configuracio.objects.create(usuari=request.user)
-
-    if request.method == 'GET':
-        return Response({
-            "status": "ok",
-            "settings": {
-                "notificaciones": config.notificacions,
-                "tema": config.tema,
-                "privacitat": config.privacitat
-            }
-        })
-    elif request.method == 'PUT':
-        config.notificacions = request.data.get("notificaciones", config.notificacions)
-        config.tema = request.data.get("tema", config.tema)
-        config.privacitat = request.data.get("privacitat", config.privacitat)
-        config.save()
-        return Response({
-            "status": "ok",
-            "settings_actualizados": {
-                "notificaciones": config.notificacions,
-                "tema": config.tema,
-                "privacitat": config.privacitat
-            }
-        })
-
-
-# -----------------------------
-# SOPORTE
-# -----------------------------
-@csrf_exempt
-@api_view(['POST'])
-def support_view(request):
-    if request.user.is_anonymous:
-        return Response({"error": "Usuario no autenticado"}, status=401)
-
-    mensaje = request.data.get("mensaje", "")
-    s = Suport.objects.create(
-        usuari=request.user,
-        missatge=mensaje
-    )
-    return Response({
-        "status": "ok",
-        "mensaje_recibido": s.missatge,
-        "fecha": s.data,
-        "estado": s.estat
     })
