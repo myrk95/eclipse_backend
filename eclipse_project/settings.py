@@ -133,21 +133,3 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:8000",
 ]
-
-# -----------------------------
-# Middleware personalizado para desactivar CSRF en /api/
-# -----------------------------
-# Crea el archivo eclipse_project/middleware.py con esto:
-
-# middleware.py
-"""
-class DisableCSRFOnAPI:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        if request.path.startswith("/api/"):
-            setattr(request, "_dont_enforce_csrf_checks", True)
-        response = self.get_response(request)
-        return response
-"""
