@@ -13,7 +13,7 @@ User = get_user_model()
 # -----------------------------
 # Inicializar predictor IA con ruta absoluta
 # -----------------------------
-MODEL_PATH = os.path.join(settings.BASE_DIR, "eclipse", "inferencia", "isic2019_mobilenetv2_best.keras")
+MODEL_PATH = os.path.join(settings.BASE_DIR, "inferencia", "isic2019_mobilenetv2_best.keras")
 predictor = MelanomaPredictor(model_path=MODEL_PATH)
 
 # -----------------------------
