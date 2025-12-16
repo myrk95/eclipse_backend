@@ -5,20 +5,27 @@ from django.contrib.auth import get_user_model, authenticate
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from inferencia.inferencia import MelanomaPredictor
 from .models import Lunar, ResultatAnalisi, Historial
 
 User = get_user_model()
 
 # --------------------------------------------------
-# Inicializar predictor IA
+# Lazy loading del predictor IA
 # --------------------------------------------------
 MODEL_PATH = os.path.join(
     settings.BASE_DIR,
     "inferencia",
     "isic2019_mobilenetv2_best.keras"
 )
-predictor = MelanomaPredictor(model_path=MODEL_PATH)
+
+_predictor = None
+
+def get_predictor():
+    global _predictor
+    if _predictor is None:
+        from inferencia.inferencia import MelanomaPredictor
+        _predictor = MelanomaPredictor(model_path=MODEL_PATH)
+    return _predictor
 
 # --------------------------------------------------
 # LOGIN
@@ -47,7 +54,6 @@ def login_view(request):
         "email": user.email
     })
 
-
 # --------------------------------------------------
 # REGISTRO
 # --------------------------------------------------
@@ -74,7 +80,6 @@ def register_view(request):
         "user_id": user.id,
         "email": user.email
     })
-
 
 # --------------------------------------------------
 # DASHBOARD
@@ -110,7 +115,6 @@ def dashboard_view(request):
         "ultimos_resultados": ultimos_resultados
     })
 
-
 # --------------------------------------------------
 # SUBIR IMAGEN
 # --------------------------------------------------
@@ -137,7 +141,6 @@ def upload_image(request):
         "lunar_id": lunar.id,
         "imagen_url": request.build_absolute_uri(lunar.imatge.url)
     })
-
 
 # --------------------------------------------------
 # ANALYSIS RESULT
@@ -169,6 +172,7 @@ def analysis_result(request):
             for chunk in image_file.chunks():
                 f.write(chunk)
 
+        predictor = get_predictor()
         resultado = predictor.predict(temp_path)
         probabilidad = resultado["probabilidad"]
         prediccion = resultado["prediccion"]
@@ -199,7 +203,6 @@ def analysis_result(request):
         "probabilidad": f"{probabilidad:.2%}",
         "imagen_url": request.build_absolute_uri(lunar.imatge.url)
     })
-
 
 # --------------------------------------------------
 # HISTORIAL
@@ -234,7 +237,6 @@ def history_view(request):
         "historial": historial
     })
 
-
 # --------------------------------------------------
 # PROFILE
 # --------------------------------------------------
@@ -257,14 +259,12 @@ def profile_view(request):
         }
     })
 
-
 # --------------------------------------------------
 # SETTINGS
 # --------------------------------------------------
 @api_view(['GET', 'POST'])
 def settings_view(request):
     return Response({"status": "ok"})
-
 
 # --------------------------------------------------
 # SUPPORT
