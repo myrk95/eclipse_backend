@@ -3,16 +3,17 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Admin
+    path('admin/', admin.site.urls),
 
-    path('admin/', admin.site.urls),  
-    # Health check / Dashboard
-    path('health/', views.dashboard_view, name='health'),
+    # Health check (para Render)
+    path('health/', views.profile_view, name='health'),
 
     # Autenticación
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register'),
 
-    # Dashboard / Home
+    # Dashboard
     path('dashboard/', views.dashboard_view, name='dashboard'),
 
     # Subir imagen
@@ -21,7 +22,7 @@ urlpatterns = [
     # Resultado de análisis con IA
     path('analysis_result/', views.analysis_result, name='analysis_result'),
 
-    # Historial del usuario
+    # Historial
     path('history/', views.history_view, name='history'),
 
     # Perfil
