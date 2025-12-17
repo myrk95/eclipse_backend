@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/', include('eclipse.urls')),  # Aquí incluyes las urls de tu app "eclipse"
+    path('api/v1/', include('eclipse.urls')),  # <- aquí defines el prefijo v1
 ]
 
 if settings.DEBUG:

@@ -6,14 +6,9 @@ import os
 # -----------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-fallback-key')
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
-
-ALLOWED_HOSTS = [
-    'eclipse-backend-m8zi.onrender.com',  # producción Render
-    'localhost',                           # desarrollo
-    '127.0.0.1',                           # desarrollo
-]
+SECRET_KEY = 'django-insecure-fallback-key'
+DEBUG = True
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # -----------------------------
 # Aplicaciones
@@ -70,7 +65,7 @@ WSGI_APPLICATION = 'eclipse_project.wsgi.application'
 # -----------------------------
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',  # Para producción recomiendo PostgreSQL
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
@@ -100,7 +95,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = BASE_DIR / 'media'  # aquí se guardarán las imágenes localmente
 
 # -----------------------------
 # Usuario personalizado
@@ -130,7 +125,6 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React web dev
     "http://localhost:5173",  # Vite dev
-    "https://tu-frontend-produccion.com",  # React web prod
 ]
 CORS_ALLOW_HEADERS = ["*"]
 CORS_ALLOW_METHODS = ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
@@ -141,28 +135,9 @@ CORS_ALLOW_METHODS = ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:8000",
-    "https://eclipse-backend-m8zi.onrender.com",
 ]
 
 # -----------------------------
-# TensorFlow: carga perezosa para no matar workers
+# TensorFlow: ruta del modelo
 # -----------------------------
-# Ejemplo de uso en tu código:
-# from inferencia.inferencia import MelanomaPredictor
-# predictor = MelanomaPredictor(MODEL_PATH)
-#
-# En inferencia/inferencia.py:
-# class MelanomaPredictor:
-#     _model = None
-#     def __init__(self, model_path):
-#         if MelanomaPredictor._model is None:
-#             import tensorflow as tf
-#             MelanomaPredictor._model = tf.keras.models.load_model(model_path)
-#         self.model = MelanomaPredictor._model
-
-# -----------------------------
-# Variables de entorno opcionales
-# -----------------------------
-MODEL_PATH = os.environ.get(
-    'MODEL_PATH', str(BASE_DIR / 'inferencia/isic2019_mobilenetv2_best.keras')
-)
+MODEL_PATH = BASE_DIR / 'inferencia/isic2019_mobilenetv2_best.keras'
