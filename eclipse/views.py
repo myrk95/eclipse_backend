@@ -150,11 +150,10 @@ def upload_image(request):
             descripcio=descripcio
         )
 
-        imagen_url = None
-        try:
-            imagen_url = request.build_absolute_uri(lunar.imatge.url)
-        except Exception:
-            pass
+        # Añadir al historial
+        Historial.objects.create(usuari=user, lunar=lunar)
+
+        imagen_url = request.build_absolute_uri(lunar.imatge.url)
 
         return Response({
             "status": "ok",
@@ -177,6 +176,8 @@ def analysis_result(request):
         user_id = request.data.get("user_id")
         lunar_id = request.data.get("lunar_id")
         image_file = request.FILES.get("image")
+        nom = request.data.get("nom") or "Lunar sin nombre"
+        descripcio = request.data.get("descripcio") or ""
 
         if not user_id:
             return Response({"error": "user_id requerido"}, status=400)
@@ -197,7 +198,12 @@ def analysis_result(request):
                     return Response({"error": "Lunar inválido"}, status=400)
                 temp_path = lunar.imatge.path
             elif image_file:
-                lunar = Lunar.objects.create(usuari=user, imatge=image_file)
+                lunar = Lunar.objects.create(
+                    usuari=user,
+                    imatge=image_file,
+                    name=nom,
+                    descripcio=descripcio
+                )
                 temp_dir = os.path.join(settings.MEDIA_ROOT, "temp")
                 os.makedirs(temp_dir, exist_ok=True)
                 temp_filename = f"{uuid.uuid4()}.jpg"
@@ -281,19 +287,16 @@ def history_view(request):
         if not user_id:
             return Response({"error": "user_id requerido"}, status=401)
 
-        # Obtener el usuario
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return Response({"error": "Usuario inválido"}, status=401)
 
         historial = []
-        # Obtener los registros del historial del usuario, ordenados por fecha descendente
         registros = Historial.objects.filter(usuari=user).order_by("-data").select_related('lunar')
 
         for h in registros:
             lunar = h.lunar
-            # Último resultado del lunar
             result = lunar.resultats.last()
             prob_str = f"{result.probabilitat:.2%}" if result else None
 
@@ -313,7 +316,6 @@ def history_view(request):
     except Exception as e:
         traceback.print_exc()
         return Response({"error": "Ocurrió un error en history_view", "detalle": str(e)}, status=500)
-
 
 
 # --------------------------------------------------
