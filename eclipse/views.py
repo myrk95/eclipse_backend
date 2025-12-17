@@ -116,76 +116,99 @@ def dashboard_view(request):
 def upload_image(request):
     user_id = request.data.get("user_id")
     image_file = request.FILES.get("image")
+    nom = request.data.get("nom")
+    descripcio = request.data.get("descripcio")
+
     if not user_id or not image_file:
         return Response({"error": "Datos incompletos"}, status=400)
+
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "Usuario inválido"}, status=401)
 
-    lunar = Lunar.objects.create(usuari=user, imatge=image_file)
+    lunar = Lunar.objects.create(
+        usuari=user,
+        imatge=image_file,
+        nom=nom,
+        descripcio=descripcio
+    )
+
+    imagen_url = None
+    try:
+        imagen_url = request.build_absolute_uri(lunar.imatge.url)
+    except Exception:
+        pass
+
     return Response({
         "status": "ok",
         "lunar_id": lunar.id,
-        "imagen_url": request.build_absolute_uri(lunar.imatge.url)
+        "imagen_url": imagen_url,
+        "nombre": lunar.nom,
+        "descripcion": lunar.descripcio
     })
 
 # --------------------------------------------------
-# ANALYSIS RESULT SEGURO
+# ANALYSIS RESULT
 # --------------------------------------------------
 @api_view(['POST'])
 def analysis_result(request):
     user_id = request.data.get("user_id")
-    image_file = request.FILES.get("image")
+    lunar_id = request.data.get("lunar_id")
+    image_file = request.FILES.get("image")  # opcional para legacy
 
-    if not user_id or not image_file:
-        return Response({"error": "Datos incompletos"}, status=400)
+    if not user_id:
+        return Response({"error": "user_id requerido"}, status=400)
 
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "Usuario inválido"}, status=401)
 
-    # Crear objeto Lunar
-    lunar = Lunar.objects.create(usuari=user, imatge=image_file)
-
-    # Crear ruta temporal con nombre único
-    temp_dir = os.path.join(settings.MEDIA_ROOT, "temp")
-    os.makedirs(temp_dir, exist_ok=True)
-    temp_filename = f"{uuid.uuid4()}.jpg"
-    temp_path = os.path.join(temp_dir, temp_filename)
-
-    try:
-        # Guardar imagen temporalmente
+    # Si se proporciona lunar_id, usamos el lunar existente
+    if lunar_id:
+        try:
+            lunar = Lunar.objects.get(id=lunar_id, usuari=user)
+        except Lunar.DoesNotExist:
+            return Response({"error": "Lunar inválido"}, status=400)
+        temp_path = lunar.imatge.path
+    # Legacy: si se proporciona imagen, creamos un lunar temporal
+    elif image_file:
+        lunar = Lunar.objects.create(usuari=user, imatge=image_file)
+        temp_dir = os.path.join(settings.MEDIA_ROOT, "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4()}.jpg"
+        temp_path = os.path.join(temp_dir, temp_filename)
         with open(temp_path, "wb+") as f:
             for chunk in image_file.chunks():
                 f.write(chunk)
+    else:
+        return Response({"error": "Se requiere lunar_id o imagen"}, status=400)
 
+    # Predicción
+    try:
         predictor = get_predictor()
         resultado = predictor.predict(temp_path)
 
-        # Captura de errores de predictor
         if "error" in resultado:
             return Response({"error": resultado["error"]}, status=400)
 
         probabilidad = resultado.get("probabilidad")
         prediccion = resultado.get("prediccion")
-        warnings = resultado.get("warnings", [])  # opcional, si tu predictor devuelve warnings
+        warnings = resultado.get("warnings", [])
 
         if probabilidad is None or prediccion is None:
             return Response({"error": "Resultado inválido del predictor"}, status=500)
 
     except Exception as e:
-        print("DEBUG - Traceback del error:")
         print(traceback.format_exc())
         return Response({"error": f"Error durante el análisis: {str(e)}"}, status=500)
 
     finally:
-        # Limpiar archivo temporal
-        if os.path.exists(temp_path):
+        if image_file and os.path.exists(temp_path):
             os.remove(temp_path)
 
-    # Guardar resultado en la DB
+    # Guardar resultado y historial
     ResultatAnalisi.objects.create(
         lunar=lunar,
         tipus=prediccion,
@@ -194,12 +217,11 @@ def analysis_result(request):
     )
     Historial.objects.create(usuari=user, lunar=lunar)
 
-    # Construir URL de la imagen de manera segura
     imagen_url = None
     try:
         imagen_url = request.build_absolute_uri(lunar.imatge.url)
     except Exception:
-        imagen_url = None
+        pass
 
     return Response({
         "status": "ok",
@@ -207,7 +229,7 @@ def analysis_result(request):
         "resultado": prediccion,
         "probabilidad": f"{probabilidad:.2%}",
         "imagen_url": imagen_url,
-        "warnings": warnings  # lista de warnings de calidad y gates, si existen
+        "warnings": warnings
     })
 
 # --------------------------------------------------
