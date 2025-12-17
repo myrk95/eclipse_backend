@@ -114,39 +114,44 @@ def dashboard_view(request):
 # --------------------------------------------------
 @api_view(['POST'])
 def upload_image(request):
-    user_id = request.data.get("user_id")
-    image_file = request.FILES.get("image")
-    nom = request.data.get("nom")
-    descripcio = request.data.get("descripcio")
-
-    if not user_id or not image_file:
-        return Response({"error": "Datos incompletos"}, status=400)
-
     try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return Response({"error": "Usuario inválido"}, status=401)
+        user_id = request.data.get("user_id")
+        image_file = request.FILES.get("image")
+        nom = request.data.get("nom")
+        descripcio = request.data.get("descripcio")
 
-    lunar = Lunar.objects.create(
-        usuari=user,
-        imatge=image_file,
-        nom=nom,
-        descripcio=descripcio
-    )
+        if not user_id or not image_file:
+            return Response({"error": "Datos incompletos"}, status=400)
 
-    imagen_url = None
-    try:
-        imagen_url = request.build_absolute_uri(lunar.imatge.url)
-    except Exception:
-        pass
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "Usuario inválido"}, status=401)
 
-    return Response({
-        "status": "ok",
-        "lunar_id": lunar.id,
-        "imagen_url": imagen_url,
-        "nombre": lunar.nom,
-        "descripcion": lunar.descripcio
-    })
+        lunar = Lunar.objects.create(
+            usuari=user,
+            imatge=image_file,
+            nom=nom,
+            descripcio=descripcio
+        )
+
+        imagen_url = None
+        try:
+            imagen_url = request.build_absolute_uri(lunar.imatge.url)
+        except Exception:
+            pass
+
+        return Response({
+            "status": "ok",
+            "lunar_id": lunar.id,
+            "imagen_url": imagen_url,
+            "nombre": lunar.nom,
+            "descripcion": lunar.descripcio
+        })
+
+    except Exception as e:
+        # Devuelve el error real en JSON, así Postman no recibe solo HTML
+        return Response({"error": str(e)}, status=500) 
 
 # --------------------------------------------------
 # ANALYSIS RESULT
