@@ -1,6 +1,6 @@
 from pathlib import Path
 import os
-
+# RUNNEAR python manage.py runserver 0.0.0.0:8000
 # -----------------------------
 # Base del proyecto
 # -----------------------------
@@ -8,7 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-fallback-key'
 DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# Permitir conexiones desde cualquier host en desarrollo
+ALLOWED_HOSTS = ['*']
 
 # -----------------------------
 # Aplicaciones
@@ -31,7 +33,7 @@ INSTALLED_APPS = [
 # Middleware
 # -----------------------------
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # Debe ir primero
+    'corsheaders.middleware.CorsMiddleware',  # debe ir primero
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -122,10 +124,7 @@ REST_FRAMEWORK = {
 # -----------------------------
 # CORS
 # -----------------------------
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React web dev
-    "http://localhost:5173",  # Vite dev
-]
+CORS_ALLOW_ALL_ORIGINS = True  # para desarrollo
 CORS_ALLOW_HEADERS = ["*"]
 CORS_ALLOW_METHODS = ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
 
@@ -135,6 +134,7 @@ CORS_ALLOW_METHODS = ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:8000",
+    "http://192.168.1.82:8081",  # tu IP local y puerto metro bundler
 ]
 
 # -----------------------------
