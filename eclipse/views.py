@@ -117,8 +117,8 @@ def upload_image(request):
     try:
         user_id = request.data.get("user_id")
         image_file = request.FILES.get("image")
-        nom = request.data.get("nom")
-        descripcio = request.data.get("descripcio")
+        nom = request.data.get("nom") or "Lunar sin nombre"
+        descripcio = request.data.get("descripcio") or ""
 
         if not user_id or not image_file:
             return Response({"error": "Datos incompletos"}, status=400)
@@ -145,13 +145,12 @@ def upload_image(request):
             "status": "ok",
             "lunar_id": lunar.id,
             "imagen_url": imagen_url,
-            "nombre": lunar.nom,
+            "nombre": lunar.name,
             "descripcion": lunar.descripcio
         })
 
     except Exception as e:
-        # Devuelve el error real en JSON, así Postman no recibe solo HTML
-        return Response({"error": str(e)}, status=500) 
+        return Response({"error": str(e)}, status=500)
 
 # --------------------------------------------------
 # ANALYSIS RESULT
@@ -160,7 +159,7 @@ def upload_image(request):
 def analysis_result(request):
     user_id = request.data.get("user_id")
     lunar_id = request.data.get("lunar_id")
-    image_file = request.FILES.get("image")  # opcional para legacy
+    image_file = request.FILES.get("image")
 
     if not user_id:
         return Response({"error": "user_id requerido"}, status=400)
@@ -170,30 +169,42 @@ def analysis_result(request):
     except User.DoesNotExist:
         return Response({"error": "Usuario inválido"}, status=401)
 
-    # Si se proporciona lunar_id, usamos el lunar existente
-    if lunar_id:
-        try:
-            lunar = Lunar.objects.get(id=lunar_id, usuari=user)
-        except Lunar.DoesNotExist:
-            return Response({"error": "Lunar inválido"}, status=400)
-        temp_path = lunar.imatge.path
-    # Legacy: si se proporciona imagen, creamos un lunar temporal
-    elif image_file:
-        lunar = Lunar.objects.create(usuari=user, imatge=image_file)
-        temp_dir = os.path.join(settings.MEDIA_ROOT, "temp")
-        os.makedirs(temp_dir, exist_ok=True)
-        temp_filename = f"{uuid.uuid4()}.jpg"
-        temp_path = os.path.join(temp_dir, temp_filename)
-        with open(temp_path, "wb+") as f:
-            for chunk in image_file.chunks():
-                f.write(chunk)
-    else:
-        return Response({"error": "Se requiere lunar_id o imagen"}, status=400)
+    temp_path = None
+    temp_file_created = False
 
-    # Predicción
+    try:
+        if lunar_id:
+            try:
+                lunar = Lunar.objects.get(id=lunar_id, usuari=user)
+            except Lunar.DoesNotExist:
+                return Response({"error": "Lunar inválido"}, status=400)
+            temp_path = lunar.imatge.path
+        elif image_file:
+            lunar = Lunar.objects.create(usuari=user, imatge=image_file)
+            temp_dir = os.path.join(settings.MEDIA_ROOT, "temp")
+            os.makedirs(temp_dir, exist_ok=True)
+            temp_filename = f"{uuid.uuid4()}.jpg"
+            temp_path = os.path.join(temp_dir, temp_filename)
+            with open(temp_path, "wb+") as f:
+                for chunk in image_file.chunks():
+                    f.write(chunk)
+            temp_file_created = True
+        else:
+            return Response({"error": "Se requiere lunar_id o imagen"}, status=400)
+    except Exception as e:
+        return Response({"error": f"No se pudo procesar la imagen: {str(e)}"}, status=500)
+
+    # Predicción con control de errores
+    probabilidad = None
+    prediccion = None
+    warnings = []
+
     try:
         predictor = get_predictor()
-        resultado = predictor.predict(temp_path)
+        try:
+            resultado = predictor.predict(temp_path)
+        except Exception as e:
+            return Response({"error": f"Error al ejecutar la IA: {str(e)}"}, status=500)
 
         if "error" in resultado:
             return Response({"error": resultado["error"]}, status=400)
@@ -206,21 +217,23 @@ def analysis_result(request):
             return Response({"error": "Resultado inválido del predictor"}, status=500)
 
     except Exception as e:
-        print(traceback.format_exc())
-        return Response({"error": f"Error durante el análisis: {str(e)}"}, status=500)
+        return Response({"error": f"Error durante la inicialización de la IA: {str(e)}"}, status=500)
 
     finally:
-        if image_file and os.path.exists(temp_path):
+        if temp_file_created and temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
 
     # Guardar resultado y historial
-    ResultatAnalisi.objects.create(
-        lunar=lunar,
-        tipus=prediccion,
-        probabilitat=probabilidad,
-        descripcio=f"Resultado del análisis: {prediccion}"
-    )
-    Historial.objects.create(usuari=user, lunar=lunar)
+    try:
+        ResultatAnalisi.objects.create(
+            lunar=lunar,
+            tipus=prediccion,
+            probabilitat=probabilidad,
+            descripcio=f"Resultado del análisis: {prediccion}"
+        )
+        Historial.objects.create(usuari=user, lunar=lunar)
+    except Exception as e:
+        return Response({"error": f"No se pudo guardar el resultado/historial: {str(e)}"}, status=500)
 
     imagen_url = None
     try:
@@ -232,7 +245,7 @@ def analysis_result(request):
         "status": "ok",
         "lunar_id": lunar.id,
         "resultado": prediccion,
-        "probabilidad": f"{probabilidad:.2%}",
+        "probabilidad": f"{probabilidad:.2%}" if probabilidad is not None else None,
         "imagen_url": imagen_url,
         "warnings": warnings
     })
