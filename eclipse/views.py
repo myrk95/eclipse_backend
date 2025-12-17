@@ -131,7 +131,7 @@ def upload_image(request):
         lunar = Lunar.objects.create(
             usuari=user,
             imatge=image_file,
-            nom=nom,
+            name=nom,
             descripcio=descripcio
         )
 
