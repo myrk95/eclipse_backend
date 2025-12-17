@@ -281,15 +281,19 @@ def history_view(request):
         if not user_id:
             return Response({"error": "user_id requerido"}, status=401)
 
+        # Obtener el usuario
         try:
-            user = Usuari.objects.get(id=user_id)
-        except Usuari.DoesNotExist:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
             return Response({"error": "Usuario inválido"}, status=401)
 
         historial = []
+        # Obtener los registros del historial del usuario, ordenados por fecha descendente
         registros = Historial.objects.filter(usuari=user).order_by("-data").select_related('lunar')
+
         for h in registros:
             lunar = h.lunar
+            # Último resultado del lunar
             result = lunar.resultats.last()
             prob_str = f"{result.probabilitat:.2%}" if result else None
 
@@ -305,9 +309,11 @@ def history_view(request):
             })
 
         return Response({"status": "ok", "historial": historial})
+
     except Exception as e:
         traceback.print_exc()
         return Response({"error": "Ocurrió un error en history_view", "detalle": str(e)}, status=500)
+
 
 
 # --------------------------------------------------
